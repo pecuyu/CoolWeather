@@ -1,9 +1,10 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    tools:context="com.yu.coolweather.ChooseAreaFragment">
+              xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#fff"
+              android:orientation="vertical"
+              tools:context="com.yu.coolweather.ChooseAreaFragment">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -15,25 +16,24 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
+            android:text="@string/Title"
             android:textColor="#fff"
-            android:textSize="20dp"
-            android:text="@string/Title" />
+            android:textSize="20dp"/>
 
         <Button
             android:id="@+id/id_btn_back_choose_area"
             android:layout_width="25dp"
             android:layout_height="25dp"
-            android:layout_centerVertical="true"
             android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="5dp"
             android:background="@mipmap/ic_back"
-            tools:ignore="RtlCompat,RtlHardcoded" />
+            tools:ignore="RtlCompat,RtlHardcoded"/>
     </RelativeLayout>
 
     <ListView
         android:id="@+id/id_lv_choose_area"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
-
     </ListView>
 </LinearLayout>

@@ -26,7 +26,7 @@ public class Utility {
                 JSONArray array = new JSONArray(response);
                for (int i=0;i<array.length();i++) {
                    JSONObject obj = array.getJSONObject(i);
-                   Province province = new Province(obj.getString("name"), obj.getInt("code"));
+                   Province province = new Province(obj.getString("name"), obj.getInt("id"));
                    province.save();
                }
                 return true;
@@ -48,7 +48,7 @@ public class Utility {
                 JSONArray array = new JSONArray(response);
                for (int i=0;i<array.length();i++) {
                    JSONObject obj = array.getJSONObject(i);
-                   City city = new City(obj.getString("name"), obj.getInt("code"),provinceId);
+                   City city = new City(obj.getString("name"), obj.getInt("id"),provinceId);
                    city.save();
                }
                 return true;
@@ -71,7 +71,7 @@ public class Utility {
                 JSONArray array = new JSONArray(response);
                 for (int i=0;i<array.length();i++) {
                     JSONObject obj = array.getJSONObject(i);
-                    County county = new County(obj.getString("name"), obj.getInt("code"),cityId);
+                    County county = new County(obj.getString("name"), obj.getInt("id"),cityId);
                     county.save();
                 }
                 return true;
