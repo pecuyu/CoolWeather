@@ -88,7 +88,7 @@ public class ChooseAreaFragment extends Fragment {
     }
 
     /**
-     * 查找省信息
+     * 查找省信息,优先查本地数据库，没有则从网络拉取
      */
     private void queryProvinces() {
         tvTitle.setText("中国");
@@ -101,9 +101,15 @@ public class ChooseAreaFragment extends Fragment {
             }
             adapter.notifyDataSetChanged();
             listView.setSelection(0);
-            currentLevel=LE
+            currentLevel = LEVEL_PROVINCE;
         } else {
-
+            String url = "";
+            queryFromSever();
         }
+    }
+
+    private void queryFromSever() {
+
+
     }
 }
