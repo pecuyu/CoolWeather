@@ -13,6 +13,12 @@ public class County extends DataSupport {
     private int countyCode;
     private int cityId;
 
+    public County(String countyName, int countyCode, int cityId) {
+        this.countyName = countyName;
+        this.countyCode = countyCode;
+        this.cityId = cityId;
+    }
+
     public void setId(int id) {
         this.id = id;
     }

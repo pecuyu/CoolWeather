@@ -12,6 +12,11 @@ public class Province extends DataSupport{
     private String provinceName;
     private int provinceCode;
 
+    public Province(String provinceName, int provinceCode) {
+        this.provinceName = provinceName;
+        this.provinceCode = provinceCode;
+    }
+
     public int getId() {
         return id;
     }
