@@ -154,7 +154,7 @@ public class ChooseAreaFragment extends Fragment {
 //                String cityName = cursor.getString(cursor.getColumnIndex("cityname"));
 //                int cityCode = cursor.getInt(cursor.getColumnIndex("citycode"));
 //                int provinceId = cursor.getInt(cursor.getColumnIndex("provinceid"));
-//                City city = new City(cityName,cityCode, provinceId);
+//                AQICity city = new AQICity(cityName,cityCode, provinceId);
 //                cityList.add(city);
 //            }
 //            cursor.close();
@@ -258,11 +258,11 @@ public class ChooseAreaFragment extends Fragment {
     ProgressDialog progressDialog;
 
     private void showProgressDialog() {
+        if (progressDialog==null)
         progressDialog = new ProgressDialog(getActivity());
         progressDialog.setTitle("正在加载...");
         progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.show();
-
     }
 
     private void dismissProgressDialog() {
