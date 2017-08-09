@@ -2,6 +2,7 @@ package com.yu.coolweather;
 
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -101,7 +102,12 @@ public class ChooseAreaFragment extends Fragment {
                         queryCounties();
                         break;
                     case LEVEL_COUNTY:
-                        //
+                        // 启动WeatherActivity
+                        int weatherId = countyList.get(position).getWeatherId();
+                        Intent intent = new Intent(getActivity(), WeatherActivity.class);
+                        intent.putExtra("weatherId", weatherId+"");
+                        getActivity().startActivity(intent);
+
                         break;
                 }
             }
@@ -179,7 +185,7 @@ public class ChooseAreaFragment extends Fragment {
     }
 
     private void queryCounties() {
-        List<County> countyList = DataSupport.where("cityid = ?", String.valueOf(selectCity.getId())).find(County.class);
+        countyList = DataSupport.where("cityid = ?", String.valueOf(selectCity.getId())).find(County.class);
         if (countyList.size() > 0) {
             btnBack.setVisibility(View.VISIBLE);
             tvTitle.setText(selectCity.getCityName());

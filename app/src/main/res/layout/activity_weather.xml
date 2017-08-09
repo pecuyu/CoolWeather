@@ -8,6 +8,7 @@
     tools:context="com.yu.coolweather.WeatherActivity">
 
     <ScrollView
+        android:id="@+id/id_weather_scroll_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <LinearLayout
