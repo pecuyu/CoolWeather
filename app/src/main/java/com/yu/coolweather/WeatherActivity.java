@@ -109,15 +109,19 @@ public class WeatherActivity extends AppCompatActivity {
         String temperature = weather.now.temperature;
         String nowInfo = weather.now.more.info;
         List<Forecast> forecastList = weather.daily_forecast;
-        String aqi = weather.aqi.city.aqi;
-        String pm25 = weather.aqi.city.pm25;
+        String aqi=null;
+        String pm25=null;
+        if (weather.aqi != null) {
+            aqi = weather.aqi.city.aqi;
+            pm25 = weather.aqi.city.pm25;
+        }
         String comfortInfo = "舒适度：" + weather.suggestion.comfort.info;
         String carWashInfo = "洗车指数：" + weather.suggestion.carWash.info;
         String sportInfo = "运行建议：" + weather.suggestion.sport.info;
 
         tvTitle.setText(cityName);
-        tvUpdateTime.setText(updateTime);
-        tvDegreeNow.setText(temperature);
+        tvUpdateTime.setText(updateTime.split(" ")[1]);
+        tvDegreeNow.setText(temperature+"°C");
         tvDescNow.setText(nowInfo);
         tvAqi.setText(aqi);
         tvPM25.setText(pm25);

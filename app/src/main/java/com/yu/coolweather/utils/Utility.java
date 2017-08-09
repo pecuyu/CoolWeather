@@ -73,7 +73,7 @@ public class Utility {
                 JSONArray array = new JSONArray(response);
                 for (int i=0;i<array.length();i++) {
                     JSONObject obj = array.getJSONObject(i);
-                    County county = new County(obj.getString("name"), obj.getInt("weather_id"),cityId);
+                    County county = new County(obj.getString("name"), obj.getString("weather_id"),cityId);
                     county.save();
                 }
                 return true;

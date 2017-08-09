@@ -3,6 +3,7 @@ package com.yu.coolweather;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -56,9 +57,9 @@ public class ChooseAreaFragment extends Fragment {
 
     private int currentLevel;  // 当前级别
     /* 选中的省市 */
-    private Province selectProvince;
+    private Province selectedProvince;
 
-    private City selectCity;
+    private City selectedCity;
 
     /* 当前第一个可见的省市，用于返回时的定位 */
     private int mProvinceCurFirstPos = 0;
@@ -93,19 +94,19 @@ public class ChooseAreaFragment extends Fragment {
                 switch (currentLevel) {
                     case LEVEL_PROVINCE:
                         mProvinceCurFirstPos = parent.getFirstVisiblePosition();
-                        selectProvince = provinceList.get(position);
+                        selectedProvince = provinceList.get(position);
                         queryCities();
                         break;
                     case LEVEL_CITY:
                         mCityCurFirstPos = parent.getFirstVisiblePosition();
-                        selectCity = cityList.get(position);
+                        selectedCity = cityList.get(position);
                         queryCounties();
                         break;
                     case LEVEL_COUNTY:
                         // 启动WeatherActivity
-                        int weatherId = countyList.get(position).getWeatherId();
+                        String weatherId = countyList.get(position).getWeatherId();
                         Intent intent = new Intent(getActivity(), WeatherActivity.class);
-                        intent.putExtra("weatherId", weatherId+"");
+                        intent.putExtra("weatherId", weatherId);
                         getActivity().startActivity(intent);
 
                         break;
@@ -141,7 +142,7 @@ public class ChooseAreaFragment extends Fragment {
                 dataList.add(province.getProvinceName());
             }
             adapter.notifyDataSetChanged();
-            listView.setSelection(selectProvince == null ? 0 : mProvinceCurFirstPos);
+            listView.setSelection(selectedProvince == null ? 0 : mProvinceCurFirstPos);
             currentLevel = LEVEL_PROVINCE;
         } else {
             String url = "http://guolin.tech/api/china";
@@ -153,42 +154,54 @@ public class ChooseAreaFragment extends Fragment {
      * 查找省信息,优先查本地数据库，没有则从网络拉取
      */
     private void queryCities() {
-//        Cursor cursor = DataSupport.findBySQL("select * from city where provinceid = ?" ,String.valueOf(selectProvince.getId()));
-//        if (cursor!=null) {
-//            cityList.clear();
-//            while (cursor.moveToNext()) {
-//                String cityName = cursor.getString(cursor.getColumnIndex("cityname"));
-//                int cityCode = cursor.getInt(cursor.getColumnIndex("citycode"));
-//                int provinceId = cursor.getInt(cursor.getColumnIndex("provinceid"));
-//                AQICity city = new AQICity(cityName,cityCode, provinceId);
-//                cityList.add(city);
-//            }
-//            cursor.close();
-//        }
-        cityList = DataSupport.where("provinceid = ?", String.valueOf(selectProvince.getId())).find(City.class);
+        Cursor cursor = DataSupport.findBySQL("select * from city where provinceid = ?", String.valueOf(selectedProvince.getId()));
+        if (cursor != null) {
+            cityList.clear();
+            while (cursor.moveToNext()) {
+                String cityName = cursor.getString(cursor.getColumnIndex("cityname"));
+                int cityCode = cursor.getInt(cursor.getColumnIndex("citycode"));
+                int provinceId = cursor.getInt(cursor.getColumnIndex("provinceid"));
+                City city = new City(cityName, cityCode, provinceId);
+                cityList.add(city);
+            }
+            cursor.close();
+        }
+//        cityList = DataSupport.where("provinceid = ?", String.valueOf(selectedProvince.getId())).find(City.class);
         if (this.cityList.size() > 0) {
             btnBack.setVisibility(View.VISIBLE);
-            tvTitle.setText(selectProvince.getProvinceName());
+            tvTitle.setText(selectedProvince.getProvinceName());
             dataList.clear();
             for (City city : this.cityList) {
                 dataList.add(city.getCityName());
             }
             adapter.notifyDataSetChanged();
-            listView.setSelection(selectCity == null ? 0 : mCityCurFirstPos);
+            listView.setSelection(selectedCity == null ? 0 : mCityCurFirstPos);
             currentLevel = LEVEL_CITY;
 
         } else {
-            int provinceCode = selectProvince.getProvinceCode();
+            int provinceCode = selectedProvince.getProvinceCode();
             String url = "http://guolin.tech/api/china" + "/" + provinceCode;
             queryFromSever(url, "city");
         }
     }
 
     private void queryCounties() {
-        countyList = DataSupport.where("cityid = ?", String.valueOf(selectCity.getId())).find(County.class);
+        countyList = DataSupport.where("cityid = ?", String.valueOf(selectedCity.getId())).find(County.class);
+//        Cursor cursor = DataSupport.findBySQL("select * from county where cityid = ?" ,String.valueOf(selectedCity.getId()));
+//        if (cursor!=null) {
+//            countyList.clear();
+//            while (cursor.moveToNext()) {
+//                String countyName = cursor.getString(cursor.getColumnIndex("countyname"));
+//                String weatherId = cursor.getString(cursor.getColumnIndex("weatherid"));
+//                int cityId = cursor.getInt(cursor.getColumnIndex("cityid"));
+//                County county = new County(countyName, weatherId, cityId);
+//                countyList.add(county);
+//            }
+//            cursor.close();
+//        }
         if (countyList.size() > 0) {
             btnBack.setVisibility(View.VISIBLE);
-            tvTitle.setText(selectCity.getCityName());
+            tvTitle.setText(selectedCity.getCityName());
             dataList.clear();
             for (County county : countyList) {
                 dataList.add(county.getCountyName());
@@ -197,8 +210,8 @@ public class ChooseAreaFragment extends Fragment {
             listView.setSelection(0);
             currentLevel = LEVEL_COUNTY;
         } else {
-            int provinceCode = selectProvince.getProvinceCode();
-            int cityCode = selectCity.getCityCode();
+            int provinceCode = selectedProvince.getProvinceCode();
+            int cityCode = selectedCity.getCityCode();
             String url = "http://guolin.tech/api/china" + "/" + provinceCode + "/" + cityCode;
             queryFromSever(url, "county");
         }
@@ -228,10 +241,10 @@ public class ChooseAreaFragment extends Fragment {
                             b = Utility.handleProvinceResponse(resp);
                             break;
                         case "city":
-                            b = Utility.handleCityResponse(resp, selectProvince.getId());
+                            b = Utility.handleCityResponse(resp, selectedProvince.getId());
                             break;
                         case "county":
-                            b = Utility.handleCountyResponse(resp, selectCity.getId());
+                            b = Utility.handleCountyResponse(resp, selectedCity.getId());
                             break;
                     }
 
@@ -264,8 +277,8 @@ public class ChooseAreaFragment extends Fragment {
     ProgressDialog progressDialog;
 
     private void showProgressDialog() {
-        if (progressDialog==null)
-        progressDialog = new ProgressDialog(getActivity());
+        if (progressDialog == null)
+            progressDialog = new ProgressDialog(getActivity());
         progressDialog.setTitle("正在加载...");
         progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.show();
