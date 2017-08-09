@@ -2,7 +2,6 @@ package com.yu.coolweather;
 
 
 import android.app.ProgressDialog;
-import android.database.Cursor;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -15,6 +14,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.yu.coolweather.db.City;
 import com.yu.coolweather.db.County;
@@ -59,6 +59,10 @@ public class ChooseAreaFragment extends Fragment {
 
     private City selectCity;
 
+    /* 当前第一个可见的省市，用于返回时的定位 */
+    private int mProvinceCurFirstPos = 0;
+    private int mCityCurFirstPos = 0;
+
 
     public ChooseAreaFragment() {
         // Required empty public constructor
@@ -87,10 +91,12 @@ public class ChooseAreaFragment extends Fragment {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 switch (currentLevel) {
                     case LEVEL_PROVINCE:
+                        mProvinceCurFirstPos = parent.getFirstVisiblePosition();
                         selectProvince = provinceList.get(position);
                         queryCities();
                         break;
                     case LEVEL_CITY:
+                        mCityCurFirstPos = parent.getFirstVisiblePosition();
                         selectCity = cityList.get(position);
                         queryCounties();
                         break;
@@ -99,6 +105,7 @@ public class ChooseAreaFragment extends Fragment {
                         break;
                 }
             }
+
         });
 
         btnBack.setOnClickListener(new View.OnClickListener() {
@@ -128,7 +135,7 @@ public class ChooseAreaFragment extends Fragment {
                 dataList.add(province.getProvinceName());
             }
             adapter.notifyDataSetChanged();
-            listView.setSelection(0);
+            listView.setSelection(selectProvince == null ? 0 : mProvinceCurFirstPos);
             currentLevel = LEVEL_PROVINCE;
         } else {
             String url = "http://guolin.tech/api/china";
@@ -140,40 +147,42 @@ public class ChooseAreaFragment extends Fragment {
      * 查找省信息,优先查本地数据库，没有则从网络拉取
      */
     private void queryCities() {
-        tvTitle.setText(selectProvince.getProvinceName());
-        btnBack.setVisibility(View.VISIBLE);
-        Cursor cursor = DataSupport.findBySQL("select * from city where provinceid = ?" ,String.valueOf(selectProvince.getId()));
-        if (cursor!=null) {
-            while (cursor.moveToNext()) {
-                String cityName = cursor.getString(cursor.getColumnIndex("cityname"));
-                int cityCode = cursor.getInt(cursor.getColumnIndex("citycode"));
-                int provinceId = cursor.getInt(cursor.getColumnIndex("provinceid"));
-                City city = new City(cityName,cityCode, provinceId);
-                cityList.add(city);
-            }
-            cursor.close();
-        }
-        if (cityList.size() > 0) {
+//        Cursor cursor = DataSupport.findBySQL("select * from city where provinceid = ?" ,String.valueOf(selectProvince.getId()));
+//        if (cursor!=null) {
+//            cityList.clear();
+//            while (cursor.moveToNext()) {
+//                String cityName = cursor.getString(cursor.getColumnIndex("cityname"));
+//                int cityCode = cursor.getInt(cursor.getColumnIndex("citycode"));
+//                int provinceId = cursor.getInt(cursor.getColumnIndex("provinceid"));
+//                City city = new City(cityName,cityCode, provinceId);
+//                cityList.add(city);
+//            }
+//            cursor.close();
+//        }
+        cityList = DataSupport.where("provinceid = ?", String.valueOf(selectProvince.getId())).find(City.class);
+        if (this.cityList.size() > 0) {
+            btnBack.setVisibility(View.VISIBLE);
+            tvTitle.setText(selectProvince.getProvinceName());
             dataList.clear();
-            for (City city : cityList) {
+            for (City city : this.cityList) {
                 dataList.add(city.getCityName());
             }
             adapter.notifyDataSetChanged();
-            listView.setSelection(0);
+            listView.setSelection(selectCity == null ? 0 : mCityCurFirstPos);
             currentLevel = LEVEL_CITY;
 
         } else {
             int provinceCode = selectProvince.getProvinceCode();
-            String url = "http://guolin.tech/api/china" + "/"+provinceCode;
+            String url = "http://guolin.tech/api/china" + "/" + provinceCode;
             queryFromSever(url, "city");
         }
     }
 
     private void queryCounties() {
-        tvTitle.setText(selectCity.getCityName());
-        btnBack.setVisibility(View.VISIBLE);
-        List<County> countyList = DataSupport.where("cityid=?", String.valueOf(selectCity.getId())).find(County.class);
+        List<County> countyList = DataSupport.where("cityid = ?", String.valueOf(selectCity.getId())).find(County.class);
         if (countyList.size() > 0) {
+            btnBack.setVisibility(View.VISIBLE);
+            tvTitle.setText(selectCity.getCityName());
             dataList.clear();
             for (County county : countyList) {
                 dataList.add(county.getCountyName());
@@ -184,7 +193,7 @@ public class ChooseAreaFragment extends Fragment {
         } else {
             int provinceCode = selectProvince.getProvinceCode();
             int cityCode = selectCity.getCityCode();
-            String url = "http://guolin.tech/api/china" + provinceCode + "/" + cityCode;
+            String url = "http://guolin.tech/api/china" + "/" + provinceCode + "/" + cityCode;
             queryFromSever(url, "county");
         }
     }
@@ -195,8 +204,13 @@ public class ChooseAreaFragment extends Fragment {
             HttpUtil.sendOkHttpRequest(url, new Callback() {
                 @Override // 线程池中调用
                 public void onFailure(Call call, IOException e) {
-                    dismissProgressDialog();
-
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            dismissProgressDialog();
+                            Toast.makeText(GlobalContextApplication.getContext(), "加载失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
 
                 @Override  // 线程池中调用

@@ -24,7 +24,7 @@ public class GlobalContextApplication extends Application {
      * 获取全局上下文对象
      * @return
      */
-    public  static Context getGlobalContext() {
+    public  static Context getContext() {
         return context;
     }
 }
