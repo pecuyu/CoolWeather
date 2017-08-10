@@ -149,6 +149,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
             getWindow().setStatusBarColor(Color.TRANSPARENT);
         }
+
         setContentView(R.layout.activity_weather);
 
         tvTitle = (TextView) findViewById(R.id.id_tv_title_weather);
@@ -295,7 +296,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                     swipeRefresh.setRefreshing(true);
                     requestWeather(mWeatherId);
                     String bingPic = getSharedPreferences("weather", MODE_APPEND).getString("bing_pic", null);
-                    Glide.with(GlobalContextApplication.getContext()).load(bingPic).into(bingImg);
+                    Glide.with(GlobalContextApplication.getContext()).load(bingPic).placeholder(R.mipmap.ic_bg).into(bingImg);
                     break;
             }
         }
@@ -317,8 +318,8 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                     @Override
                     public void run() {
 //                        RequestBuilder<TranscodeType> thumbnailRequest
-                        Glide.with(WeatherActivity.this).load(bingPic).into(bingImg);
-
+                        // placeholder设置等待时的图片
+                        Glide.with(WeatherActivity.this).load(bingPic).placeholder(R.mipmap.ic_bg).into(bingImg);
                     }
                 });
             }

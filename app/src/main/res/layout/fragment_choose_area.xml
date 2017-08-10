@@ -2,10 +2,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0fff"
+    android:background="#6c8"
     android:orientation="vertical"
-    android:paddingTop="40dp"
+    android:fitsSystemWindows="true"
     tools:context="com.yu.coolweather.ChooseAreaFragment">
+<!--android:paddingTop="40dp"-->
 
     <RelativeLayout
         android:layout_width="match_parent"
