@@ -19,7 +19,7 @@ import okhttp3.Response;
  * Created by D22436 on 2017/8/10.
  */
 
-public class UpdateService extends Service {
+public class AutoUpdateService extends Service {
     Timer timer;
 
     @Override
@@ -30,7 +30,8 @@ public class UpdateService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String weatherId = intent.getStringExtra("weatherId");
-        final String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
+//        final String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
+        final String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=5d5bdbd790a24dc495d3ed56d9a68a16";
         updateWeather(weatherUrl);
 
         if (timer == null) {
@@ -39,9 +40,10 @@ public class UpdateService extends Service {
                 @Override
                 public void run() {
                     updateWeather(weatherUrl);
+                    loadBingPic();
                 }
             };
-            timer.schedule(timerTask,0,5000);  // 定时更新
+            timer.schedule(timerTask,60*1000,10*60*1000);  // 定时更新
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -62,6 +64,27 @@ public class UpdateService extends Service {
                         .apply();
                 Intent intent = new Intent(WeatherActivity.ACTION_UPDATE_WEATHER);
                 sendBroadcast(intent);  // 发送更新广播
+            }
+        });
+    }
+
+    /**
+     * 加载必应每日一图
+     */
+    private void loadBingPic() {
+        String requestBingPic = "http://guolin.tech/api/bing_pic";
+        HttpUtil.sendOkHttpRequest(requestBingPic, new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String bingPic = response.body().string();
+                getSharedPreferences("weather",MODE_APPEND|MODE_PRIVATE).edit()
+                .putString("bing_pic", bingPic)
+                .apply();
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
             }
         });
     }

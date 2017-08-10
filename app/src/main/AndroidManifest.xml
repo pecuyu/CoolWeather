@@ -7,7 +7,7 @@
     <application
         android:name=".GlobalContextApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/weather"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
@@ -20,7 +20,7 @@
         </activity>
         <activity android:name=".WeatherActivity"></activity>
 
-        <service android:name=".UpdateService" />
+        <service android:name=".AutoUpdateService" />
     </application>
 
 </manifest>

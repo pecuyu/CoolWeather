@@ -24,6 +24,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.yu.coolweather.entity.Forecast;
 import com.yu.coolweather.entity.Weather;
 import com.yu.coolweather.utils.HttpUtil;
@@ -37,7 +38,7 @@ import okhttp3.Callback;
 import okhttp3.Response;
 
 public class WeatherActivity extends AppCompatActivity implements ChooseAreaFragment.OnRefreshLayoutListener {
-    public static final String  ACTION_UPDATE_WEATHER = "com.yu.coolweather.UPDATE_WEATHER";
+    public static final String ACTION_UPDATE_WEATHER = "com.yu.coolweather.UPDATE_WEATHER";
     TextView tvTitle, tvUpdateTime, tvDegreeNow, tvDescNow,
             tvAqi, tvPM25, tvComfort, tvWashCar, tvSport;
 
@@ -47,6 +48,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     String cityName = "未知";
 
     ImageView ivLocation;
+    ImageView bingImg;
 
     private String mWeatherId;
 
@@ -61,19 +63,18 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= 21) {
-            View decorView = getWindow().getDecorView();
-            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-            getWindow().setStatusBarColor(Color.TRANSPARENT);
-        }
-        setContentView(R.layout.activity_weather);
-
         initViews();
         initDatas();
         initEvents();
 
+        startUpdateService();
         registerUpdateReceiver();
+
+    }
+
+    private void startUpdateService() {
+        Intent intent = new Intent(this, AutoUpdateService.class);
+        startService(intent);
     }
 
     private void registerUpdateReceiver() {
@@ -124,8 +125,12 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         cityName = sp.getString("cityName", "未知");
         if (!TextUtils.isEmpty(weatherCache)) {    // 有缓存
             Weather weather = Utility.handleWeatherResponse(weatherCache);
-            mWeatherId = weather.basic.weatherId;
-            weather.basic.cityName = cityName;
+            if (weather.basic != null) {
+                weather.basic.cityName = cityName;
+                mWeatherId = weather.basic.weatherId;
+            } else {
+                mWeatherId = sp.getString("weatherId", null);
+            }
             showWeatherInfo(weather);
             swipeRefresh.setRefreshing(false);
         } else {
@@ -133,10 +138,19 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
             mWeatherId = intent.getStringExtra("weatherId");
             cityName = intent.getStringExtra("city");
             requestWeather(mWeatherId);
+            loadBingPic();
         }
     }
 
     private void initViews() {
+        if (Build.VERSION.SDK_INT >= 21) {
+            View decorView = getWindow().getDecorView();
+            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+        }
+        setContentView(R.layout.activity_weather);
+
         tvTitle = (TextView) findViewById(R.id.id_tv_title_weather);
         tvUpdateTime = (TextView) findViewById(R.id.id_tv_update_time_weather);
         tvDegreeNow = (TextView) findViewById(R.id.id_tv_degree_now_weather);
@@ -147,7 +161,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         tvWashCar = (TextView) findViewById(R.id.id_tv_wash_car_suggestion);
         tvSport = (TextView) findViewById(R.id.id_tv_sport_suggestion);
         ivLocation = (ImageView) findViewById(R.id.id_iv_choose_area);
-
+        bingImg = (ImageView) findViewById(R.id.id_iv_bg_weather);
         drawer = (DrawerLayout) findViewById(R.id.id_drawer_weather);
 
         swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.id_refresh_weather);
@@ -166,7 +180,8 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     }
 
     public void requestWeather(final String weatherId) {
-        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
+//        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
+        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=5d5bdbd790a24dc495d3ed56d9a68a16";
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -190,12 +205,18 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                         if (weather != null && "ok".equals(weather.status)) {
                             weather.basic.cityName = cityName;
                             mWeatherId = weather.basic.weatherId;
-                            getSharedPreferences("weather", Context.MODE_APPEND | Context.MODE_PRIVATE)
-                                    .edit().putString("weather", responseText)
-                                    .putString("cityName", cityName).commit();
+                            getSharedPreferences("weather", Context.MODE_APPEND)
+                                    .edit()
+                                    .putString("weather", responseText)
+                                    .putString("weatherId", mWeatherId)
+                                    .putString("cityName", cityName).apply();
                             dismissSwipeRefresh(true);
                             showWeatherInfo(weather);
+                        } else {
+                            dismissSwipeRefresh(false);
+                            Toast.makeText(GlobalContextApplication.getContext(), "加载天气信息失败", Toast.LENGTH_SHORT).show();
                         }
+
                     }
                 });
             }
@@ -251,7 +272,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
 
     @Override
     public void onRefresh(String weatherId, String cityName) {
-        if (drawer!=null) drawer.closeDrawer(Gravity.LEFT);
+        if (drawer != null) drawer.closeDrawer(Gravity.LEFT);
         Toast.makeText(GlobalContextApplication.getContext(), "onRefresh", Toast.LENGTH_SHORT).show();
         this.cityName = cityName;
         drawer.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
@@ -273,15 +294,45 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                 case ACTION_UPDATE_WEATHER:
                     swipeRefresh.setRefreshing(true);
                     requestWeather(mWeatherId);
+                    String bingPic = getSharedPreferences("weather", MODE_APPEND).getString("bing_pic", null);
+                    Glide.with(GlobalContextApplication.getContext()).load(bingPic).into(bingImg);
                     break;
             }
         }
     }
 
+    /**
+     * 加载必应每日一图
+     */
+    private void loadBingPic() {
+        String requestBingPic = "http://guolin.tech/api/bing_pic";
+        HttpUtil.sendOkHttpRequest(requestBingPic, new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String bingPic = response.body().string();
+                getSharedPreferences("weather",MODE_APPEND).edit()
+                        .putString("bing_pic", bingPic)
+                        .apply();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+//                        RequestBuilder<TranscodeType> thumbnailRequest
+                        Glide.with(WeatherActivity.this).load(bingPic).into(bingImg);
+
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (updateReceiver!=null) unregisterReceiver(updateReceiver);
-
+        if (updateReceiver != null) unregisterReceiver(updateReceiver);
     }
 }
