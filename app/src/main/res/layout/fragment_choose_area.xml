@@ -1,15 +1,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:tools="http://schemas.android.com/tools"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:background="#fff"
-              android:orientation="vertical"
-              tools:context="com.yu.coolweather.ChooseAreaFragment">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0fff"
+    android:orientation="vertical"
+    android:paddingTop="40dp"
+    tools:context="com.yu.coolweather.ChooseAreaFragment">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="?actionBarSize"
-        android:background="@color/colorPrimary">
+        android:background="#6c8">
 
         <TextView
             android:id="@+id/id_tv_title_choose_area"
@@ -18,7 +19,7 @@
             android:layout_centerInParent="true"
             android:text="@string/Title"
             android:textColor="#fff"
-            android:textSize="20dp"/>
+            android:textSize="20dp" />
 
         <Button
             android:id="@+id/id_btn_back_choose_area"
@@ -28,12 +29,18 @@
             android:layout_centerVertical="true"
             android:layout_marginLeft="5dp"
             android:background="@mipmap/ic_back"
-            tools:ignore="RtlCompat,RtlHardcoded"/>
+            tools:ignore="RtlCompat,RtlHardcoded" />
     </RelativeLayout>
 
-    <ListView
-        android:id="@+id/id_lv_choose_area"
+    <android.support.v4.widget.SwipeRefreshLayout
+        android:id="@+id/id_refresh_choose_area"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-    </ListView>
+
+        <ListView
+            android:id="@+id/id_lv_choose_area"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#fff"></ListView>
+    </android.support.v4.widget.SwipeRefreshLayout>
 </LinearLayout>

@@ -50,7 +50,7 @@ public class Utility {
                 JSONArray array = new JSONArray(response);
                for (int i=0;i<array.length();i++) {
                    JSONObject obj = array.getJSONObject(i);
-                   City city = new City(obj.getString("name"), obj.getInt("id"),provinceId);
+                   City city = new City(obj.getString("name"), obj.getInt("id"),i,provinceId);
                    city.save();
                }
                 return true;

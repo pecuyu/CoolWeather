@@ -1,15 +1,28 @@
 package com.yu.coolweather;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.yu.coolweather.entity.Forecast;
 import com.yu.coolweather.entity.Weather;
@@ -23,14 +36,27 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
-public class WeatherActivity extends AppCompatActivity {
-    TextView tvTitle,tvUpdateTime,tvDegreeNow,tvDescNow,
-            tvAqi,tvPM25,tvComfort,tvWashCar,tvSport;
+public class WeatherActivity extends AppCompatActivity implements ChooseAreaFragment.OnRefreshLayoutListener {
+    public static final String  ACTION_UPDATE_WEATHER = "com.yu.coolweather.UPDATE_WEATHER";
+    TextView tvTitle, tvUpdateTime, tvDegreeNow, tvDescNow,
+            tvAqi, tvPM25, tvComfort, tvWashCar, tvSport;
 
     // forecast item
-    TextView tvDateForecast,tvDescForecast,tvMaxForecast, tvMinForecast;
+    TextView tvDateForecast, tvDescForecast, tvMaxForecast, tvMinForecast;
     LinearLayout forecastContainer;
+    String cityName = "未知";
+
+    ImageView ivLocation;
+
     private String mWeatherId;
+
+    SwipeRefreshLayout swipeRefresh;
+
+    ScrollView scrollView;
+
+    DrawerLayout drawer;
+
+    WeatherUpdateReceiver updateReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,16 +71,67 @@ public class WeatherActivity extends AppCompatActivity {
 
         initViews();
         initDatas();
+        initEvents();
+
+        registerUpdateReceiver();
+    }
+
+    private void registerUpdateReceiver() {
+        updateReceiver = new WeatherUpdateReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_UPDATE_WEATHER);
+        registerReceiver(updateReceiver, filter);
+    }
+
+    private void initEvents() {
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestWeather(mWeatherId);
+            }
+        });
+
+        ivLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawer.openDrawer(Gravity.LEFT);
+            }
+        });
+
+        tvTitle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawer.openDrawer(Gravity.LEFT);
+            }
+        });
+    }
+
+    public void dismissSwipeRefresh(boolean success) {
+        if (swipeRefresh != null && swipeRefresh.isRefreshing()) {
+            swipeRefresh.setRefreshing(false);
+            if (success) {
+                Toast.makeText(GlobalContextApplication.getContext(), "refresh success", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(GlobalContextApplication.getContext(), "refresh failed", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void initDatas() {
-        String weatherCache = getSharedPreferences("weather", Context.MODE_APPEND | Context.MODE_PRIVATE).getString("weather", null);
+        swipeRefresh.setRefreshing(true);
+        SharedPreferences sp = getSharedPreferences("weather", Context.MODE_APPEND | Context.MODE_PRIVATE);
+        String weatherCache = sp.getString("weather", null);
+        cityName = sp.getString("cityName", "未知");
         if (!TextUtils.isEmpty(weatherCache)) {    // 有缓存
             Weather weather = Utility.handleWeatherResponse(weatherCache);
             mWeatherId = weather.basic.weatherId;
+            weather.basic.cityName = cityName;
             showWeatherInfo(weather);
+            swipeRefresh.setRefreshing(false);
         } else {
-            mWeatherId = getIntent().getStringExtra("weatherId");
+            Intent intent = getIntent();
+            mWeatherId = intent.getStringExtra("weatherId");
+            cityName = intent.getStringExtra("city");
             requestWeather(mWeatherId);
         }
     }
@@ -69,9 +146,23 @@ public class WeatherActivity extends AppCompatActivity {
         tvComfort = (TextView) findViewById(R.id.id_tv_comfort_suggestion);
         tvWashCar = (TextView) findViewById(R.id.id_tv_wash_car_suggestion);
         tvSport = (TextView) findViewById(R.id.id_tv_sport_suggestion);
+        ivLocation = (ImageView) findViewById(R.id.id_iv_choose_area);
+
+        drawer = (DrawerLayout) findViewById(R.id.id_drawer_weather);
+
+        swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.id_refresh_weather);
+        swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+        // 设置显示位置
+        swipeRefresh.setProgressViewOffset(true, 0,
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 200, getResources().getDisplayMetrics()));
+        scrollView = (ScrollView) findViewById(R.id.id_weather_scroll_view);
+        scrollView.setVisibility(View.INVISIBLE);
 
         forecastContainer = (LinearLayout) findViewById(R.id.id_ll_forecast);
 
+        ChooseAreaFragment fragment = new ChooseAreaFragment();
+        getSupportFragmentManager().beginTransaction().replace(R.id.id_fl_container_left, fragment).commit();
+        fragment.setOnRefreshLayoutListener(this);
     }
 
     public void requestWeather(final String weatherId) {
@@ -79,7 +170,12 @@ public class WeatherActivity extends AppCompatActivity {
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dismissSwipeRefresh(false);
+                    }
+                });
             }
 
             @Override
@@ -92,9 +188,12 @@ public class WeatherActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if (weather != null && "ok".equals(weather.status)) {
+                            weather.basic.cityName = cityName;
                             mWeatherId = weather.basic.weatherId;
                             getSharedPreferences("weather", Context.MODE_APPEND | Context.MODE_PRIVATE)
-                                    .edit().putString("weather",responseText).commit();
+                                    .edit().putString("weather", responseText)
+                                    .putString("cityName", cityName).commit();
+                            dismissSwipeRefresh(true);
                             showWeatherInfo(weather);
                         }
                     }
@@ -109,8 +208,8 @@ public class WeatherActivity extends AppCompatActivity {
         String temperature = weather.now.temperature;
         String nowInfo = weather.now.more.info;
         List<Forecast> forecastList = weather.daily_forecast;
-        String aqi=null;
-        String pm25=null;
+        String aqi = null;
+        String pm25 = null;
         if (weather.aqi != null) {
             aqi = weather.aqi.city.aqi;
             pm25 = weather.aqi.city.pm25;
@@ -121,7 +220,7 @@ public class WeatherActivity extends AppCompatActivity {
 
         tvTitle.setText(cityName);
         tvUpdateTime.setText(updateTime.split(" ")[1]);
-        tvDegreeNow.setText(temperature+"°C");
+        tvDegreeNow.setText(temperature + "°C");
         tvDescNow.setText(nowInfo);
         tvAqi.setText(aqi);
         tvPM25.setText(pm25);
@@ -129,10 +228,11 @@ public class WeatherActivity extends AppCompatActivity {
         tvWashCar.setText(carWashInfo);
         tvSport.setText(sportInfo);
 
+        forecastContainer.removeAllViews();
         for (Forecast forecast : forecastList) {
             View view = View.inflate(WeatherActivity.this, R.layout.forecast_item, null);
-            tvDateForecast= (TextView) view.findViewById(R.id.id_tv_date_forecast_item);
-            tvDescForecast= (TextView) view.findViewById(R.id.id_tv_info_forecast_item);
+            tvDateForecast = (TextView) view.findViewById(R.id.id_tv_date_forecast_item);
+            tvDescForecast = (TextView) view.findViewById(R.id.id_tv_info_forecast_item);
             tvMaxForecast = (TextView) view.findViewById(R.id.id_tv_max_forecast_item);
             tvMinForecast = (TextView) view.findViewById(R.id.id_tv_min_forecast_item);
 
@@ -143,5 +243,45 @@ public class WeatherActivity extends AppCompatActivity {
 
             forecastContainer.addView(view);
         }
+        // 显示
+        if (scrollView.getVisibility() == View.INVISIBLE) {
+            scrollView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    @Override
+    public void onRefresh(String weatherId, String cityName) {
+        if (drawer!=null) drawer.closeDrawer(Gravity.LEFT);
+        Toast.makeText(GlobalContextApplication.getContext(), "onRefresh", Toast.LENGTH_SHORT).show();
+        this.cityName = cityName;
+        drawer.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
+            @Override
+            public void onGlobalLayout() {
+                swipeRefresh.setRefreshing(true);
+                drawer.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+        });
+        requestWeather(weatherId);
+    }
+
+    public class WeatherUpdateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            switch (action) {
+                case ACTION_UPDATE_WEATHER:
+                    swipeRefresh.setRefreshing(true);
+                    requestWeather(mWeatherId);
+                    break;
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (updateReceiver!=null) unregisterReceiver(updateReceiver);
+
     }
 }

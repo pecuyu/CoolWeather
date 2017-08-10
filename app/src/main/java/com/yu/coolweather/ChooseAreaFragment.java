@@ -5,9 +5,13 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.TextUtils;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,10 +42,12 @@ import okhttp3.Response;
 /**
  * A simple {@link Fragment} subclass.
  */
-public class ChooseAreaFragment extends Fragment {
+public class ChooseAreaFragment extends Fragment implements MainActivity.onKeyDownListener {
     Button btnBack;
     TextView tvTitle;
     ListView listView;
+    SwipeRefreshLayout refresh;
+
     ArrayAdapter<String> adapter;
 
     private List<String> dataList = new ArrayList<>();
@@ -76,6 +82,7 @@ public class ChooseAreaFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_choose_area, container, false);
 
+        refresh = (SwipeRefreshLayout) view.findViewById(R.id.id_refresh_choose_area);
         btnBack = (Button) view.findViewById(R.id.id_btn_back_choose_area);
         tvTitle = (TextView) view.findViewById(R.id.id_tv_title_choose_area);
         listView = (ListView) view.findViewById(R.id.id_lv_choose_area);
@@ -84,6 +91,37 @@ public class ChooseAreaFragment extends Fragment {
 
         return view;
     }
+
+
+    /**
+     * 强制5秒结束
+     */
+    private void stopRefreshing() {
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                SystemClock.sleep(5000);
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dismissRefreshing();
+                    }
+                });
+            }
+        }.start();
+
+    }
+
+    /**
+     * 结束刷新
+     */
+    private void dismissRefreshing() {
+        if (refresh != null && refresh.isRefreshing()) {
+            refresh.setRefreshing(false);
+        }
+    }
+
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
@@ -105,9 +143,20 @@ public class ChooseAreaFragment extends Fragment {
                     case LEVEL_COUNTY:
                         // 启动WeatherActivity
                         String weatherId = countyList.get(position).getWeatherId();
-                        Intent intent = new Intent(getActivity(), WeatherActivity.class);
-                        intent.putExtra("weatherId", weatherId);
-                        getActivity().startActivity(intent);
+                        String countyName = countyList.get(position).getCountyName();
+                        if (getActivity() instanceof MainActivity) {
+                            Intent intent = new Intent(getActivity(), WeatherActivity.class);
+                            intent.putExtra("city", countyName);
+                            intent.putExtra("weatherId", weatherId);
+                            getActivity().startActivity(intent);
+                            getActivity().finish();
+                        } else if (getActivity() instanceof WeatherActivity) {
+                            if (listener != null) {
+                                listener.onRefresh(weatherId, countyName);
+                            } else {
+                                throw new RuntimeException("you need implement and set the OnRefreshLayoutListener");
+                            }
+                        }
 
                         break;
                 }
@@ -126,6 +175,25 @@ public class ChooseAreaFragment extends Fragment {
             }
         });
 
+        refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                stopRefreshing();
+                switch (currentLevel) {
+                    case LEVEL_PROVINCE:
+                        queryProvinces();
+                        break;
+                    case LEVEL_CITY:
+                        queryCities();
+                        break;
+                    case LEVEL_COUNTY:
+                        queryCounties();
+                        break;
+                }
+
+            }
+        });
+
         queryProvinces(); // 初始化
     }
 
@@ -141,6 +209,7 @@ public class ChooseAreaFragment extends Fragment {
             for (Province province : provinceList) {
                 dataList.add(province.getProvinceName());
             }
+            dismissRefreshing();
             adapter.notifyDataSetChanged();
             listView.setSelection(selectedProvince == null ? 0 : mProvinceCurFirstPos);
             currentLevel = LEVEL_PROVINCE;
@@ -161,7 +230,8 @@ public class ChooseAreaFragment extends Fragment {
                 String cityName = cursor.getString(cursor.getColumnIndex("cityname"));
                 int cityCode = cursor.getInt(cursor.getColumnIndex("citycode"));
                 int provinceId = cursor.getInt(cursor.getColumnIndex("provinceid"));
-                City city = new City(cityName, cityCode, provinceId);
+                int id = cursor.getInt(cursor.getColumnIndex("id"));
+                City city = new City(cityName, cityCode, id, provinceId);
                 cityList.add(city);
             }
             cursor.close();
@@ -174,6 +244,7 @@ public class ChooseAreaFragment extends Fragment {
             for (City city : this.cityList) {
                 dataList.add(city.getCityName());
             }
+            dismissRefreshing();
             adapter.notifyDataSetChanged();
             listView.setSelection(selectedCity == null ? 0 : mCityCurFirstPos);
             currentLevel = LEVEL_CITY;
@@ -186,6 +257,8 @@ public class ChooseAreaFragment extends Fragment {
     }
 
     private void queryCounties() {
+        countyList.clear();
+        Log.e("TAG", "cityId=" + selectedCity.getId());
         countyList = DataSupport.where("cityid = ?", String.valueOf(selectedCity.getId())).find(County.class);
 //        Cursor cursor = DataSupport.findBySQL("select * from county where cityid = ?" ,String.valueOf(selectedCity.getId()));
 //        if (cursor!=null) {
@@ -206,6 +279,7 @@ public class ChooseAreaFragment extends Fragment {
             for (County county : countyList) {
                 dataList.add(county.getCountyName());
             }
+            dismissRefreshing();
             adapter.notifyDataSetChanged();
             listView.setSelection(0);
             currentLevel = LEVEL_COUNTY;
@@ -277,16 +351,53 @@ public class ChooseAreaFragment extends Fragment {
     ProgressDialog progressDialog;
 
     private void showProgressDialog() {
-        if (progressDialog == null)
+        if (progressDialog == null) {
             progressDialog = new ProgressDialog(getActivity());
-        progressDialog.setTitle("正在加载...");
-        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        progressDialog.show();
+            progressDialog.setTitle("正在加载...");
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            progressDialog.show();
+        }
     }
 
     private void dismissProgressDialog() {
         if (progressDialog != null) {
             progressDialog.dismiss();
         }
+        dismissRefreshing();
+    }
+
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+            rollbackList();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 处理返回键，尽可能回滚
+     */
+    private void rollbackList() {
+        if (currentLevel == LEVEL_PROVINCE) {
+            getActivity().finish();
+        } else if (currentLevel == LEVEL_CITY) {
+            queryProvinces();
+        } else if (currentLevel == LEVEL_COUNTY) {
+            queryCities();
+        }
+    }
+
+
+    public interface OnRefreshLayoutListener {
+        void onRefresh(String weatherId, String cityName);
+    }
+
+    OnRefreshLayoutListener listener;
+
+    public void setOnRefreshLayoutListener(OnRefreshLayoutListener listener) {
+        this.listener = listener;
     }
 }

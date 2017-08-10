@@ -13,7 +13,14 @@ public class City extends DataSupport {
     private int cityCode;
     private int provinceId;
 
-    public City(String cityName, int cityCode, int provinceId) {
+    public City(String cityName, int cityCode, int id, int provinceId) {
+        this.id = id;
+        this.cityName = cityName;
+        this.cityCode = cityCode;
+        this.provinceId = provinceId;
+    }
+
+    public City(String name, int cityCode, int provinceId) {
         this.cityName = cityName;
         this.cityCode = cityCode;
         this.provinceId = provinceId;
