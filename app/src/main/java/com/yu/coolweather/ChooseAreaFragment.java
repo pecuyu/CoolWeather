@@ -147,7 +147,7 @@ public class ChooseAreaFragment extends Fragment implements MainActivity.onKeyDo
                         if (getActivity() instanceof MainActivity) {
                             Intent intent = new Intent(getActivity(), WeatherActivity.class);
                             intent.putExtra("city", countyName);
-                            intent.putExtra("weatherId", weatherId);
+                            intent.putExtra("mWeatherId", weatherId);
                             getActivity().startActivity(intent);
                             getActivity().finish();
                         } else if (getActivity() instanceof WeatherActivity) {
@@ -265,9 +265,9 @@ public class ChooseAreaFragment extends Fragment implements MainActivity.onKeyDo
 //            countyList.clear();
 //            while (cursor.moveToNext()) {
 //                String countyName = cursor.getString(cursor.getColumnIndex("countyname"));
-//                String weatherId = cursor.getString(cursor.getColumnIndex("weatherid"));
+//                String mWeatherId = cursor.getString(cursor.getColumnIndex("weatherid"));
 //                int cityId = cursor.getInt(cursor.getColumnIndex("cityid"));
-//                County county = new County(countyName, weatherId, cityId);
+//                County county = new County(countyName, mWeatherId, cityId);
 //                countyList.add(county);
 //            }
 //            cursor.close();

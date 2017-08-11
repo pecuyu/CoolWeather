@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
+import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -31,6 +32,7 @@ import com.yu.coolweather.utils.HttpUtil;
 import com.yu.coolweather.utils.Utility;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import okhttp3.Call;
@@ -39,16 +41,13 @@ import okhttp3.Response;
 
 public class WeatherActivity extends AppCompatActivity implements ChooseAreaFragment.OnRefreshLayoutListener {
     public static final String ACTION_UPDATE_WEATHER = "com.yu.coolweather.UPDATE_WEATHER";
-    TextView tvTitle, tvUpdateTime, tvDegreeNow, tvDescNow,
-            tvAqi, tvPM25, tvComfort, tvWashCar, tvSport;
 
-    // forecast item
-    TextView tvDateForecast, tvDescForecast, tvMaxForecast, tvMinForecast;
+
+
     LinearLayout forecastContainer;
     String cityName = "未知";
 
     ImageView ivLocation;
-    ImageView bingImg;
 
     private String mWeatherId;
 
@@ -58,9 +57,14 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
 
     DrawerLayout drawer;
 
+    ViewPager viewPager;
     WeatherUpdateReceiver updateReceiver;
+    ImageView bingImg;
+
+    ArrayList<WeatherFragment> weatherFragments = new ArrayList<>();
 
     @Override
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initViews();
@@ -99,12 +103,12 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
             }
         });
 
-        tvTitle.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                drawer.openDrawer(Gravity.LEFT);
-            }
-        });
+//        tvTitle.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                drawer.openDrawer(Gravity.LEFT);
+//            }
+//        });
     }
 
     public void dismissSwipeRefresh(boolean success) {
@@ -119,6 +123,8 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     }
 
     private void initDatas() {
+
+
         swipeRefresh.setRefreshing(true);
         SharedPreferences sp = getSharedPreferences("weather", Context.MODE_APPEND | Context.MODE_PRIVATE);
         String weatherCache = sp.getString("weather", null);
@@ -129,13 +135,13 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                 weather.basic.cityName = cityName;
                 mWeatherId = weather.basic.weatherId;
             } else {
-                mWeatherId = sp.getString("weatherId", null);
+                mWeatherId = sp.getString("mWeatherId", null);
             }
             showWeatherInfo(weather);
             swipeRefresh.setRefreshing(false);
         } else {
             Intent intent = getIntent();
-            mWeatherId = intent.getStringExtra("weatherId");
+            mWeatherId = intent.getStringExtra("mWeatherId");
             cityName = intent.getStringExtra("city");
             requestWeather(mWeatherId);
             loadBingPic();
@@ -152,16 +158,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
 
         setContentView(R.layout.activity_weather);
 
-        tvTitle = (TextView) findViewById(R.id.id_tv_title_weather);
-        tvUpdateTime = (TextView) findViewById(R.id.id_tv_update_time_weather);
-        tvDegreeNow = (TextView) findViewById(R.id.id_tv_degree_now_weather);
-        tvDescNow = (TextView) findViewById(R.id.id_tv_desc_now_weather);
-        tvAqi = (TextView) findViewById(R.id.id_tv_aqi_info);
-        tvPM25 = (TextView) findViewById(R.id.id_tv_air_pm25);
-        tvComfort = (TextView) findViewById(R.id.id_tv_comfort_suggestion);
-        tvWashCar = (TextView) findViewById(R.id.id_tv_wash_car_suggestion);
-        tvSport = (TextView) findViewById(R.id.id_tv_sport_suggestion);
-        ivLocation = (ImageView) findViewById(R.id.id_iv_choose_area);
+        viewPager = (ViewPager) findViewById(R.id.id_pager_weather);
         bingImg = (ImageView) findViewById(R.id.id_iv_bg_weather);
         drawer = (DrawerLayout) findViewById(R.id.id_drawer_weather);
 
@@ -170,10 +167,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         // 设置显示位置
         swipeRefresh.setProgressViewOffset(true, 0,
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 200, getResources().getDisplayMetrics()));
-        scrollView = (ScrollView) findViewById(R.id.id_weather_scroll_view);
-        scrollView.setVisibility(View.INVISIBLE);
 
-        forecastContainer = (LinearLayout) findViewById(R.id.id_ll_forecast);
 
         ChooseAreaFragment fragment = new ChooseAreaFragment();
         getSupportFragmentManager().beginTransaction().replace(R.id.id_fl_container_left, fragment).commit();
@@ -181,7 +175,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     }
 
     public void requestWeather(final String weatherId) {
-//        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
+//        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + mWeatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
         String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=5d5bdbd790a24dc495d3ed56d9a68a16";
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
             @Override
@@ -209,7 +203,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                             getSharedPreferences("weather", Context.MODE_APPEND)
                                     .edit()
                                     .putString("weather", responseText)
-                                    .putString("weatherId", mWeatherId)
+                                    .putString("mWeatherId", mWeatherId)
                                     .putString("cityName", cityName).apply();
                             dismissSwipeRefresh(true);
                             showWeatherInfo(weather);
@@ -311,7 +305,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 final String bingPic = response.body().string();
-                getSharedPreferences("weather",MODE_APPEND).edit()
+                getSharedPreferences("weather", MODE_APPEND).edit()
                         .putString("bing_pic", bingPic)
                         .apply();
                 runOnUiThread(new Runnable() {
