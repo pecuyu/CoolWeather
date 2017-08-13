@@ -10,11 +10,11 @@ import java.util.List;
  * Created by D22436 on 2017/8/10.
  */
 
-public class WeatherViewPager extends FragmentStatePagerAdapter {
+public class WeatherViewPagerAdapter extends FragmentStatePagerAdapter {
 
     List<WeatherFragment> weatherFragmentList;
 
-    public WeatherViewPager(FragmentManager fm,List<WeatherFragment> weatherFragmentList) {
+    public WeatherViewPagerAdapter(FragmentManager fm, List<WeatherFragment> weatherFragmentList) {
         super(fm);
         this.weatherFragmentList = weatherFragmentList;
     }

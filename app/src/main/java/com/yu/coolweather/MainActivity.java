@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.KeyEvent;
 
 public class MainActivity extends AppCompatActivity {
@@ -15,7 +16,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         SharedPreferences sp = getSharedPreferences("weather", MODE_APPEND | MODE_PRIVATE);
-        if (sp.getString("weather", null) != null) {
+        if (checkCacheExist(sp)) {
             Intent intent = new Intent(this, WeatherActivity.class);
             startActivity(intent);
             finish();
@@ -25,6 +26,24 @@ public class MainActivity extends AppCompatActivity {
             getSupportFragmentManager().beginTransaction().replace(R.id.id_ll_main_container,fragment).commit();
         }
 
+    }
+
+    /**
+     * 查看是否存在缓存
+     * @param sp
+     * @return
+     */
+    private boolean checkCacheExist(SharedPreferences sp) {
+        String city = sp.getString("city", null);
+        if (TextUtils.isEmpty(city)) {
+            return false;
+        }
+
+        String[] cities = city.split("#");
+        if (cities.length <= 0) {
+            return false;
+        }
+        return true;
     }
 
 

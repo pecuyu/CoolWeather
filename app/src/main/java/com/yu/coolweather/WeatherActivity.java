@@ -14,7 +14,6 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -22,14 +21,10 @@ import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.yu.coolweather.entity.Forecast;
-import com.yu.coolweather.entity.Weather;
 import com.yu.coolweather.utils.HttpUtil;
-import com.yu.coolweather.utils.Utility;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,9 +34,8 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
-public class WeatherActivity extends AppCompatActivity implements ChooseAreaFragment.OnRefreshLayoutListener {
+public class WeatherActivity extends AppCompatActivity implements ChooseAreaFragment.OnAddAreaListener {
     public static final String ACTION_UPDATE_WEATHER = "com.yu.coolweather.UPDATE_WEATHER";
-
 
 
     LinearLayout forecastContainer;
@@ -58,10 +52,12 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     DrawerLayout drawer;
 
     ViewPager viewPager;
+    WeatherViewPagerAdapter adapter;
     WeatherUpdateReceiver updateReceiver;
     ImageView bingImg;
 
     ArrayList<WeatherFragment> weatherFragments = new ArrayList<>();
+    List<OnRefreshWeatherFragmentUIListener> listenerList = new ArrayList<>();
 
     @Override
 
@@ -71,8 +67,8 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         initDatas();
         initEvents();
 
-        startUpdateService();
-        registerUpdateReceiver();
+      //  startUpdateService();
+      //  registerUpdateReceiver();
 
     }
 
@@ -92,16 +88,16 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                requestWeather(mWeatherId);
+            //    if (listener != null) listener.onRefreshUI(mCityName, mWeatherId);
             }
         });
 
-        ivLocation.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                drawer.openDrawer(Gravity.LEFT);
-            }
-        });
+//        ivLocation.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                drawer.openDrawer(Gravity.LEFT);
+//            }
+//        });
 
 //        tvTitle.setOnClickListener(new View.OnClickListener() {
 //            @Override
@@ -119,32 +115,6 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
             } else {
                 Toast.makeText(GlobalContextApplication.getContext(), "refresh failed", Toast.LENGTH_SHORT).show();
             }
-        }
-    }
-
-    private void initDatas() {
-
-
-        swipeRefresh.setRefreshing(true);
-        SharedPreferences sp = getSharedPreferences("weather", Context.MODE_APPEND | Context.MODE_PRIVATE);
-        String weatherCache = sp.getString("weather", null);
-        cityName = sp.getString("cityName", "未知");
-        if (!TextUtils.isEmpty(weatherCache)) {    // 有缓存
-            Weather weather = Utility.handleWeatherResponse(weatherCache);
-            if (weather.basic != null) {
-                weather.basic.cityName = cityName;
-                mWeatherId = weather.basic.weatherId;
-            } else {
-                mWeatherId = sp.getString("mWeatherId", null);
-            }
-            showWeatherInfo(weather);
-            swipeRefresh.setRefreshing(false);
-        } else {
-            Intent intent = getIntent();
-            mWeatherId = intent.getStringExtra("mWeatherId");
-            cityName = intent.getStringExtra("city");
-            requestWeather(mWeatherId);
-            loadBingPic();
         }
     }
 
@@ -169,106 +139,85 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 200, getResources().getDisplayMetrics()));
 
 
-        ChooseAreaFragment fragment = new ChooseAreaFragment();
-        getSupportFragmentManager().beginTransaction().replace(R.id.id_fl_container_left, fragment).commit();
-        fragment.setOnRefreshLayoutListener(this);
+        ChooseAreaFragment areaFragment = new ChooseAreaFragment();
+        getSupportFragmentManager().beginTransaction().replace(R.id.id_fl_container_left, areaFragment).commit();
+        areaFragment.setOnAddAreaListener(this);
     }
 
-    public void requestWeather(final String weatherId) {
-//        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + mWeatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
-        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=5d5bdbd790a24dc495d3ed56d9a68a16";
-        HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        dismissSwipeRefresh(false);
-                    }
-                });
+    private void initDatas() {
+        List<String> weatherIds = new ArrayList<>();
+        List<String> weatherCaches = new ArrayList<>();
+        SharedPreferences sp = getSharedPreferences("weather", MODE_APPEND);
+
+        Intent intent = getIntent();
+        if (intent.getStringExtra("city") != null) {
+            String city = intent.getStringExtra("city");
+            String weatherId = intent.getStringExtra("weatherId");
+            Bundle args = new Bundle();
+            args.putString("weatherId", weatherId);
+            args.putString("mCityName", city);
+            String weatherCache = sp.getString(weatherId, null);
+            args.putString("weatherCache", weatherCache);
+            WeatherFragment fragment = WeatherFragment.newInstance(args);
+            weatherFragments.add(fragment);
+            setOnRefreshWeatherLayoutListener(fragment);
+            listenerList.add(fragment);
+
+        } else {
+            String cityArray = sp.getString("city", null);
+            if (!TextUtils.isEmpty(cityArray)) {
+                Toast.makeText(GlobalContextApplication.getContext(), "请选择城市", Toast.LENGTH_SHORT).show();
+                if (drawer != null && !drawer.isShown()) {
+                    drawer.openDrawer(Gravity.LEFT);
+                }
             }
 
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                final String responseText = response.body().string();
-                Log.e("TAG", "responseText=" + responseText);
+            String[] cities = cityArray.split("#");
 
-                final Weather weather = Utility.handleWeatherResponse(responseText);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (weather != null && "ok".equals(weather.status)) {
-                            weather.basic.cityName = cityName;
-                            mWeatherId = weather.basic.weatherId;
-                            getSharedPreferences("weather", Context.MODE_APPEND)
-                                    .edit()
-                                    .putString("weather", responseText)
-                                    .putString("mWeatherId", mWeatherId)
-                                    .putString("cityName", cityName).apply();
-                            dismissSwipeRefresh(true);
-                            showWeatherInfo(weather);
-                        } else {
-                            dismissSwipeRefresh(false);
-                            Toast.makeText(GlobalContextApplication.getContext(), "加载天气信息失败", Toast.LENGTH_SHORT).show();
-                        }
-
-                    }
-                });
+            for (String city : cities) {
+                if (TextUtils.isEmpty(city)) continue;
+                String weatherId = sp.getString(city, null);
+                weatherIds.add(weatherId);
             }
-        });
+
+            for (String weatherId : weatherIds) {
+                if (TextUtils.isEmpty(weatherId)) continue;
+                String weatherCache = sp.getString(weatherId, null);
+                weatherCaches.add(weatherCache);
+            }
+
+            if (weatherIds.size() <= 0 || cities.length <= 0) {
+                Toast.makeText(GlobalContextApplication.getContext(), "请选择城市", Toast.LENGTH_SHORT).show();
+                if (drawer != null && !drawer.isShown()) {
+                    drawer.openDrawer(Gravity.LEFT);
+                }
+            }
+
+            for (int i = 0; i < cities.length; i++) {
+                if (TextUtils.isEmpty(cities[i]) || TextUtils.isEmpty(weatherIds.get(i))) {
+                    continue;
+                }
+                Bundle args = new Bundle();
+                args.putString("weatherId", weatherIds.get(i));
+                args.putString("mCityName", cities[i]);
+                args.putString("weatherCache", weatherCaches.get(i));
+                WeatherFragment fragment = WeatherFragment.newInstance(args);
+                weatherFragments.add(fragment);
+                setOnRefreshWeatherLayoutListener(fragment); // 设置layout刷新监听
+                listenerList.add(fragment);
+            }
+        }
+
+        viewPager.setVisibility(View.VISIBLE);
+
+        adapter = new WeatherViewPagerAdapter(getSupportFragmentManager(), weatherFragments);
+        viewPager.setAdapter(adapter);
     }
 
-    private void showWeatherInfo(Weather weather) {
-        String cityName = weather.basic.cityName;
-        String updateTime = weather.basic.update.updateTime;
-        String temperature = weather.now.temperature;
-        String nowInfo = weather.now.more.info;
-        List<Forecast> forecastList = weather.daily_forecast;
-        String aqi = null;
-        String pm25 = null;
-        if (weather.aqi != null) {
-            aqi = weather.aqi.city.aqi;
-            pm25 = weather.aqi.city.pm25;
-        }
-        String comfortInfo = "舒适度：" + weather.suggestion.comfort.info;
-        String carWashInfo = "洗车指数：" + weather.suggestion.carWash.info;
-        String sportInfo = "运行建议：" + weather.suggestion.sport.info;
-
-        tvTitle.setText(cityName);
-        tvUpdateTime.setText(updateTime.split(" ")[1]);
-        tvDegreeNow.setText(temperature + "°C");
-        tvDescNow.setText(nowInfo);
-        tvAqi.setText(aqi);
-        tvPM25.setText(pm25);
-        tvComfort.setText(comfortInfo);
-        tvWashCar.setText(carWashInfo);
-        tvSport.setText(sportInfo);
-
-        forecastContainer.removeAllViews();
-        for (Forecast forecast : forecastList) {
-            View view = View.inflate(WeatherActivity.this, R.layout.forecast_item, null);
-            tvDateForecast = (TextView) view.findViewById(R.id.id_tv_date_forecast_item);
-            tvDescForecast = (TextView) view.findViewById(R.id.id_tv_info_forecast_item);
-            tvMaxForecast = (TextView) view.findViewById(R.id.id_tv_max_forecast_item);
-            tvMinForecast = (TextView) view.findViewById(R.id.id_tv_min_forecast_item);
-
-            tvDateForecast.setText(forecast.date);
-            tvDescForecast.setText(forecast.more.info);
-            tvMaxForecast.setText(forecast.temperature.max);
-            tvMinForecast.setText(forecast.temperature.min);
-
-            forecastContainer.addView(view);
-        }
-        // 显示
-        if (scrollView.getVisibility() == View.INVISIBLE) {
-            scrollView.setVisibility(View.VISIBLE);
-        }
-    }
 
     @Override
-    public void onRefresh(String weatherId, String cityName) {
+    public void onRefreshAreaAdd(String weatherId, String cityName) {
         if (drawer != null) drawer.closeDrawer(Gravity.LEFT);
-        Toast.makeText(GlobalContextApplication.getContext(), "onRefresh", Toast.LENGTH_SHORT).show();
         this.cityName = cityName;
         drawer.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
@@ -278,7 +227,15 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                 drawer.getViewTreeObserver().removeOnGlobalLayoutListener(this);
             }
         });
-        requestWeather(weatherId);
+        Bundle args = new Bundle();
+        args.putString("weatherId", weatherId);
+        args.putString("mCityName", cityName);
+        args.putString("weatherCache", null);
+        WeatherFragment fragment = WeatherFragment.newInstance(args);
+        setOnRefreshWeatherLayoutListener(fragment);
+        listenerList.add(fragment);
+        weatherFragments.add(0,fragment);
+        adapter.notifyDataSetChanged();
     }
 
     public class WeatherUpdateReceiver extends BroadcastReceiver {
@@ -288,7 +245,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
             switch (action) {
                 case ACTION_UPDATE_WEATHER:
                     swipeRefresh.setRefreshing(true);
-                    requestWeather(mWeatherId);
+                  //  if (listener != null) listener.onRefreshUI(mCityName, mWeatherId);
                     String bingPic = getSharedPreferences("weather", MODE_APPEND).getString("bing_pic", null);
                     Glide.with(GlobalContextApplication.getContext()).load(bingPic).placeholder(R.mipmap.ic_bg).into(bingImg);
                     break;
@@ -330,4 +287,31 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         super.onDestroy();
         if (updateReceiver != null) unregisterReceiver(updateReceiver);
     }
+
+
+    /**
+     * 设置weather fragment
+     */
+    public interface OnRefreshWeatherFragmentUIListener {
+        void onRefreshUI();
+    }
+
+    OnRefreshWeatherFragmentUIListener listener;
+
+    /**
+     * 设置更新监听
+     *
+     * @param listener
+     */
+    public void setOnRefreshWeatherLayoutListener(OnRefreshWeatherFragmentUIListener listener) {
+        this.listener = listener;
+    }
+
+
+    void refreshWeatherFragmentUI() {
+        for (OnRefreshWeatherFragmentUIListener listener : listenerList) {
+            if (listener!=null) listener.onRefreshUI();
+        }
+    }
+
 }

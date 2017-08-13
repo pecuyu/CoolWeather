@@ -1,6 +1,7 @@
 package com.yu.coolweather;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -30,7 +31,7 @@ import okhttp3.Response;
  * Created by D22436 on 2017/8/10.
  */
 
-public class WeatherFragment extends Fragment {
+public class WeatherFragment extends Fragment implements WeatherActivity.OnRefreshWeatherFragmentUIListener {
     private TextView tvDegreeNow;
     private TextView tvDescNow;
     private TextView tvAqi;
@@ -41,7 +42,7 @@ public class WeatherFragment extends Fragment {
     private LinearLayout forecastContainer;
 
     String weatherCache;
-    String cityName;
+    String mCityName;
     String mWeatherId;
 
     private TextView tvDateForecast;
@@ -84,14 +85,14 @@ public class WeatherFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
         Bundle arguments = getArguments();
 
-        String weatherId = (String) arguments.get("mWeatherId");
-        cityName = (String) arguments.get("cityName");
+        String weatherId = (String) arguments.get("weatherId");
+        mCityName = (String) arguments.get("cityName");
         weatherCache = (String) arguments.get("weatherCache");
 
         if (!TextUtils.isEmpty(weatherCache)) {    // 有缓存
             Weather weather = Utility.handleWeatherResponse(weatherCache);
             if (weather.basic != null) {
-                weather.basic.cityName = cityName;
+                weather.basic.cityName = mCityName;
                 mWeatherId = weather.basic.weatherId;
             } else {
                 mWeatherId = weatherId;
@@ -121,13 +122,15 @@ public class WeatherFragment extends Fragment {
                     @Override
                     public void run() {
                         if (weather != null && "ok".equals(weather.status)) {
-                            weather.basic.cityName = cityName;
+                            weather.basic.cityName = mCityName;
                             mWeatherId = weather.basic.weatherId;
-                            getActivity().getSharedPreferences("weather", Context.MODE_APPEND)
-                                    .edit()
-                                    .putString("weather", responseText)
-                                    .putString("mWeatherId", mWeatherId)
-                                    .putString("cityName", cityName).apply();
+                            SharedPreferences sp = getActivity().getSharedPreferences("weather", Context.MODE_APPEND);
+                            String cityCache = sp.getString("city", null);
+                            sp.edit().putString("city", cityCache == null ? mCityName : cityCache + "#" + mCityName)
+                                    .putString(mCityName, mWeatherId)
+                                    .putString(mWeatherId, weatherCache)
+                                    .apply();
+
                             showWeatherInfo(weather);
                         } else {
                             Toast.makeText(GlobalContextApplication.getContext(), "加载天气信息失败", Toast.LENGTH_SHORT).show();
@@ -140,7 +143,7 @@ public class WeatherFragment extends Fragment {
     }
 
     private void showWeatherInfo(Weather weather) {
-        String cityName = weather.basic.cityName;
+        String cityName = mCityName==null?weather.basic.cityName:mCityName;
         String updateTime = weather.basic.update.updateTime;
         String temperature = weather.now.temperature;
         String nowInfo = weather.now.more.info;
@@ -164,12 +167,12 @@ public class WeatherFragment extends Fragment {
         tvSport.setText(sportInfo);
 
         forecastContainer.removeAllViews();
-        View view = View.inflate(getActivity(), R.layout.forecast_item, null);
-        tvDateForecast = (TextView) view.findViewById(R.id.id_tv_date_forecast_item);
-        tvDescForecast = (TextView) view.findViewById(R.id.id_tv_info_forecast_item);
-        tvMaxForecast = (TextView) view.findViewById(R.id.id_tv_max_forecast_item);
-        tvMinForecast = (TextView) view.findViewById(R.id.id_tv_min_forecast_item);
         for (Forecast forecast : forecastList) {
+            View view = LayoutInflater.from(getActivity()).inflate(R.layout.forecast_item, null);
+            tvDateForecast = (TextView) view.findViewById(R.id.id_tv_date_forecast_item);
+            tvDescForecast = (TextView) view.findViewById(R.id.id_tv_info_forecast_item);
+            tvMaxForecast = (TextView) view.findViewById(R.id.id_tv_max_forecast_item);
+            tvMinForecast = (TextView) view.findViewById(R.id.id_tv_min_forecast_item);
             tvDateForecast.setText(forecast.date);
             tvDescForecast.setText(forecast.more.info);
             tvMaxForecast.setText(forecast.temperature.max);
@@ -180,4 +183,8 @@ public class WeatherFragment extends Fragment {
     }
 
 
+    @Override
+    public void onRefreshUI() {
+
+    }
 }

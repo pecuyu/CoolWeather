@@ -29,7 +29,7 @@ public class AutoUpdateService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        String weatherId = intent.getStringExtra("mWeatherId");
+        String weatherId = intent.getStringExtra("weatherId");
 //        final String weatherUrl = "http://guolin.tech/api/weather?cityid=" + mWeatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
         final String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=5d5bdbd790a24dc495d3ed56d9a68a16";
         updateWeather(weatherUrl);

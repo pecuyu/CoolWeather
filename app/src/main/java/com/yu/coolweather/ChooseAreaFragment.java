@@ -147,14 +147,14 @@ public class ChooseAreaFragment extends Fragment implements MainActivity.onKeyDo
                         if (getActivity() instanceof MainActivity) {
                             Intent intent = new Intent(getActivity(), WeatherActivity.class);
                             intent.putExtra("city", countyName);
-                            intent.putExtra("mWeatherId", weatherId);
+                            intent.putExtra("weatherId", weatherId);
                             getActivity().startActivity(intent);
                             getActivity().finish();
                         } else if (getActivity() instanceof WeatherActivity) {
                             if (listener != null) {
-                                listener.onRefresh(weatherId, countyName);
+                                listener.onRefreshAreaAdd(weatherId, countyName);
                             } else {
-                                throw new RuntimeException("you need implement and set the OnRefreshLayoutListener");
+                                throw new RuntimeException("you must implement the OnAddAreaListener");
                             }
                         }
 
@@ -391,13 +391,13 @@ public class ChooseAreaFragment extends Fragment implements MainActivity.onKeyDo
     }
 
 
-    public interface OnRefreshLayoutListener {
-        void onRefresh(String weatherId, String cityName);
+    public interface OnAddAreaListener {
+        void onRefreshAreaAdd(String weatherId, String cityName);
     }
 
-    OnRefreshLayoutListener listener;
+    OnAddAreaListener listener;
 
-    public void setOnRefreshLayoutListener(OnRefreshLayoutListener listener) {
+    public void setOnAddAreaListener(OnAddAreaListener listener) {
         this.listener = listener;
     }
 }
