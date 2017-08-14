@@ -8,16 +8,12 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
-import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -37,15 +33,10 @@ import okhttp3.Response;
 public class WeatherActivity extends AppCompatActivity implements ChooseAreaFragment.OnAddAreaListener {
     public static final String ACTION_UPDATE_WEATHER = "com.yu.coolweather.UPDATE_WEATHER";
 
-
     LinearLayout forecastContainer;
     String cityName = "未知";
 
-    ImageView ivLocation;
-
     private String mWeatherId;
-
-    SwipeRefreshLayout swipeRefresh;
 
     ScrollView scrollView;
 
@@ -57,7 +48,7 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     ImageView bingImg;
 
     ArrayList<WeatherFragment> weatherFragments = new ArrayList<>();
-    List<OnRefreshWeatherFragmentUIListener> listenerList = new ArrayList<>();
+//    List<OnRefreshWeatherFragmentUIListener> listenerList = new ArrayList<>();
 
     @Override
 
@@ -67,8 +58,8 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         initDatas();
         initEvents();
 
-      //  startUpdateService();
-      //  registerUpdateReceiver();
+        //  startUpdateService();
+        //  registerUpdateReceiver();
 
     }
 
@@ -85,38 +76,10 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     }
 
     private void initEvents() {
-        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-            //    if (listener != null) listener.onRefreshUI(mCityName, mWeatherId);
-            }
-        });
 
-//        ivLocation.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                drawer.openDrawer(Gravity.LEFT);
-//            }
-//        });
 
-//        tvTitle.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                drawer.openDrawer(Gravity.LEFT);
-//            }
-//        });
     }
 
-    public void dismissSwipeRefresh(boolean success) {
-        if (swipeRefresh != null && swipeRefresh.isRefreshing()) {
-            swipeRefresh.setRefreshing(false);
-            if (success) {
-                Toast.makeText(GlobalContextApplication.getContext(), "refresh success", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(GlobalContextApplication.getContext(), "refresh failed", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
 
     private void initViews() {
         if (Build.VERSION.SDK_INT >= 21) {
@@ -132,13 +95,6 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         bingImg = (ImageView) findViewById(R.id.id_iv_bg_weather);
         drawer = (DrawerLayout) findViewById(R.id.id_drawer_weather);
 
-        swipeRefresh = (SwipeRefreshLayout) findViewById(R.id.id_refresh_weather);
-        swipeRefresh.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
-        // 设置显示位置
-        swipeRefresh.setProgressViewOffset(true, 0,
-                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 200, getResources().getDisplayMetrics()));
-
-
         ChooseAreaFragment areaFragment = new ChooseAreaFragment();
         getSupportFragmentManager().beginTransaction().replace(R.id.id_fl_container_left, areaFragment).commit();
         areaFragment.setOnAddAreaListener(this);
@@ -150,36 +106,32 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         SharedPreferences sp = getSharedPreferences("weather", MODE_APPEND);
 
         Intent intent = getIntent();
-        if (intent.getStringExtra("city") != null) {
-            String city = intent.getStringExtra("city");
+        if (intent.getStringExtra("cityName") != null) {
+            String cityName = intent.getStringExtra("cityName");
             String weatherId = intent.getStringExtra("weatherId");
             Bundle args = new Bundle();
             args.putString("weatherId", weatherId);
-            args.putString("mCityName", city);
+            args.putString("cityName", cityName);
             String weatherCache = sp.getString(weatherId, null);
             args.putString("weatherCache", weatherCache);
             WeatherFragment fragment = WeatherFragment.newInstance(args);
             weatherFragments.add(fragment);
-            setOnRefreshWeatherLayoutListener(fragment);
-            listenerList.add(fragment);
 
         } else {
-            String cityArray = sp.getString("city", null);
-            if (!TextUtils.isEmpty(cityArray)) {
+            String cityArray = sp.getString("citiesName", null);
+            if (TextUtils.isEmpty(cityArray)) {
                 Toast.makeText(GlobalContextApplication.getContext(), "请选择城市", Toast.LENGTH_SHORT).show();
-                if (drawer != null && !drawer.isShown()) {
-                    drawer.openDrawer(Gravity.LEFT);
-                }
+                openDrawer();
             }
 
             String[] cities = cityArray.split("#");
-
+            // 通过city来获取weatherId
             for (String city : cities) {
                 if (TextUtils.isEmpty(city)) continue;
                 String weatherId = sp.getString(city, null);
                 weatherIds.add(weatherId);
             }
-
+            // 通过weatherId来获取weatherCache
             for (String weatherId : weatherIds) {
                 if (TextUtils.isEmpty(weatherId)) continue;
                 String weatherCache = sp.getString(weatherId, null);
@@ -188,27 +140,28 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
 
             if (weatherIds.size() <= 0 || cities.length <= 0) {
                 Toast.makeText(GlobalContextApplication.getContext(), "请选择城市", Toast.LENGTH_SHORT).show();
-                if (drawer != null && !drawer.isShown()) {
-                    drawer.openDrawer(Gravity.LEFT);
-                }
+                openDrawer();
             }
 
+            // 初始化fragments
             for (int i = 0; i < cities.length; i++) {
                 if (TextUtils.isEmpty(cities[i]) || TextUtils.isEmpty(weatherIds.get(i))) {
                     continue;
                 }
                 Bundle args = new Bundle();
                 args.putString("weatherId", weatherIds.get(i));
-                args.putString("mCityName", cities[i]);
+                args.putString("cityName", cities[i]);
                 args.putString("weatherCache", weatherCaches.get(i));
                 WeatherFragment fragment = WeatherFragment.newInstance(args);
-                weatherFragments.add(fragment);
-                setOnRefreshWeatherLayoutListener(fragment); // 设置layout刷新监听
-                listenerList.add(fragment);
+                weatherFragments.add(0,fragment);
             }
         }
 
-        viewPager.setVisibility(View.VISIBLE);
+        if (weatherFragments.size() == 0) {
+            viewPager.setVisibility(View.GONE);
+        } else {
+            viewPager.setVisibility(View.VISIBLE);
+        }
 
         adapter = new WeatherViewPagerAdapter(getSupportFragmentManager(), weatherFragments);
         viewPager.setAdapter(adapter);
@@ -219,23 +172,23 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
     public void onRefreshAreaAdd(String weatherId, String cityName) {
         if (drawer != null) drawer.closeDrawer(Gravity.LEFT);
         this.cityName = cityName;
-        drawer.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
-            @Override
-            public void onGlobalLayout() {
-                swipeRefresh.setRefreshing(true);
-                drawer.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-            }
-        });
+
         Bundle args = new Bundle();
         args.putString("weatherId", weatherId);
-        args.putString("mCityName", cityName);
+        args.putString("cityName", cityName);
         args.putString("weatherCache", null);
         WeatherFragment fragment = WeatherFragment.newInstance(args);
-        setOnRefreshWeatherLayoutListener(fragment);
-        listenerList.add(fragment);
-        weatherFragments.add(0,fragment);
-        adapter.notifyDataSetChanged();
+        weatherFragments.add(fragment);
+//        adapter = new WeatherViewPagerAdapter(getSupportFragmentManager(), weatherFragments);
+//        viewPager.setAdapter(adapter);
+        notifyWeatherDataChange();
+    }
+
+    public void notifyWeatherDataChange() {
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+            viewPager.setCurrentItem(weatherFragments.size()-1);
+        }
     }
 
     public class WeatherUpdateReceiver extends BroadcastReceiver {
@@ -244,8 +197,6 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
             String action = intent.getAction();
             switch (action) {
                 case ACTION_UPDATE_WEATHER:
-                    swipeRefresh.setRefreshing(true);
-                  //  if (listener != null) listener.onRefreshUI(mCityName, mWeatherId);
                     String bingPic = getSharedPreferences("weather", MODE_APPEND).getString("bing_pic", null);
                     Glide.with(GlobalContextApplication.getContext()).load(bingPic).placeholder(R.mipmap.ic_bg).into(bingImg);
                     break;
@@ -268,7 +219,6 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-//                        RequestBuilder<TranscodeType> thumbnailRequest
                         // placeholder设置等待时的图片
                         Glide.with(WeatherActivity.this).load(bingPic).placeholder(R.mipmap.ic_bg).into(bingImg);
                     }
@@ -288,30 +238,17 @@ public class WeatherActivity extends AppCompatActivity implements ChooseAreaFrag
         if (updateReceiver != null) unregisterReceiver(updateReceiver);
     }
 
-
-    /**
-     * 设置weather fragment
-     */
-    public interface OnRefreshWeatherFragmentUIListener {
-        void onRefreshUI();
-    }
-
-    OnRefreshWeatherFragmentUIListener listener;
-
-    /**
-     * 设置更新监听
-     *
-     * @param listener
-     */
-    public void setOnRefreshWeatherLayoutListener(OnRefreshWeatherFragmentUIListener listener) {
-        this.listener = listener;
-    }
-
-
-    void refreshWeatherFragmentUI() {
-        for (OnRefreshWeatherFragmentUIListener listener : listenerList) {
-            if (listener!=null) listener.onRefreshUI();
+    public void openDrawer() {
+        if (drawer != null && !drawer.isDrawerOpen(Gravity.LEFT)) {
+            drawer.openDrawer(Gravity.LEFT);
         }
     }
+
+    public void closeDrawer() {
+        if (drawer != null && drawer.isDrawerOpen(Gravity.LEFT)) {
+            drawer.closeDrawer(Gravity.LEFT);
+        }
+    }
+
 
 }

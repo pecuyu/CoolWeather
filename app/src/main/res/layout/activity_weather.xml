@@ -19,18 +19,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <android.support.v4.widget.SwipeRefreshLayout
-            android:id="@+id/id_refresh_weather"
+
+        <android.support.v4.view.ViewPager
+            android:id="@+id/id_pager_weather"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-
-            <android.support.v4.view.ViewPager
-                android:id="@+id/id_pager_weather"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-            </android.support.v4.view.ViewPager>
-
-        </android.support.v4.widget.SwipeRefreshLayout>
+        </android.support.v4.view.ViewPager>
 
         <FrameLayout
             android:id="@+id/id_fl_container_left"

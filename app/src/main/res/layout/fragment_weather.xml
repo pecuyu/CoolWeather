@@ -4,26 +4,34 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <ScrollView
-        android:id="@+id/id_weather_scroll_view"
+    <android.support.v4.widget.SwipeRefreshLayout
+        android:id="@+id/id_refresh_weather"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent">
 
-        <LinearLayout
+        <ScrollView
+            android:id="@+id/id_weather_scroll_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="wrap_content">
 
-            <include layout="@layout/title_weather" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
-            <include layout="@layout/now_weather" />
+                <include layout="@layout/title_weather" />
 
-            <include layout="@layout/forecast_weather" />
+                <include layout="@layout/now_weather" />
 
-            <include layout="@layout/aqi_weather" />
+                <include layout="@layout/forecast_weather" />
 
-            <include layout="@layout/suggestion_weather" />
-        </LinearLayout>
-    </ScrollView>
+                <include layout="@layout/aqi_weather" />
+
+                <include layout="@layout/suggestion_weather" />
+            </LinearLayout>
+        </ScrollView>
+
+    </android.support.v4.widget.SwipeRefreshLayout>
+
 
 </LinearLayout>

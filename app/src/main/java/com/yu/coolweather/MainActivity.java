@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
      * @return
      */
     private boolean checkCacheExist(SharedPreferences sp) {
-        String city = sp.getString("city", null);
+        String city = sp.getString("citiesName", null);
         if (TextUtils.isEmpty(city)) {
             return false;
         }

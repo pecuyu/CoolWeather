@@ -2,7 +2,7 @@ package com.yu.coolweather;
 
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.app.FragmentPagerAdapter;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
  * Created by D22436 on 2017/8/10.
  */
 
-public class WeatherViewPagerAdapter extends FragmentStatePagerAdapter {
+public class WeatherViewPagerAdapter extends FragmentPagerAdapter {
 
     List<WeatherFragment> weatherFragmentList;
 
@@ -22,6 +22,11 @@ public class WeatherViewPagerAdapter extends FragmentStatePagerAdapter {
     @Override
     public Fragment getItem(int position) {
         return weatherFragmentList.get(position);
+    }
+
+    @Override
+    public int getItemPosition(Object object) {
+        return weatherFragmentList.indexOf(object);
     }
 
     @Override

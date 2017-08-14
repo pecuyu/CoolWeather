@@ -146,7 +146,7 @@ public class ChooseAreaFragment extends Fragment implements MainActivity.onKeyDo
                         String countyName = countyList.get(position).getCountyName();
                         if (getActivity() instanceof MainActivity) {
                             Intent intent = new Intent(getActivity(), WeatherActivity.class);
-                            intent.putExtra("city", countyName);
+                            intent.putExtra("cityName", countyName);
                             intent.putExtra("weatherId", weatherId);
                             getActivity().startActivity(intent);
                             getActivity().finish();
